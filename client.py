@@ -1,4 +1,5 @@
 import socket
+import time
 
 def send_request(message):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -11,5 +12,6 @@ def send_request(message):
     client_socket.close()
 
 if __name__ == "__main__":
-    for i in range(5):  # Sending multiple requests to demonstrate load balancing
+    for i in range(15):  # Sending multiple requests to demonstrate load balancing
         send_request(f"Request {i+1}")
+        time.sleep(5)
