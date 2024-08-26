@@ -31,6 +31,10 @@ def listen_for_health_updates(lb_port):
             server_id = int(health_message.split('-')[1].split(':')[0])
             port = 9007 + server_id  # Adjusting the port based on server_id
             health_status[port] = True
+        elif "kill" in health_message:
+            server_id = int(health_message.split('-')[1].split(':')[0])
+            port = 9007 + server_id
+            health_status[port] = False
         conn.close()
 
 def start_load_balancer():
@@ -60,23 +64,26 @@ def start_load_balancer():
             client_socket.close()
             continue
 
-        # Forward the request to the selected backend server
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.connect(backend_server)
-        server_socket.send(request.encode('utf-8'))
-
-        # Receive the response from the backend server
-        response = server_socket.recv(1024)
         try:
-            response = response.decode('utf-8')
-        except UnicodeDecodeError:
-            print("Received non-text data, handling it as raw bytes.")
+            # Forward the request to the selected backend server
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.connect(backend_server)
+            server_socket.send(request.encode('utf-8'))
 
-        server_socket.close()
-
-        # Send the response back to the client
-        client_socket.send(response.encode('utf-8') if isinstance(response, str) else response)
-        client_socket.close()
+            # Receive the response from the backend server
+            response = server_socket.recv(1024)
+            try:
+                response = response.decode('utf-8')
+            except UnicodeDecodeError:
+                print("Received non-text data, handling it as raw bytes.")
+            
+            server_socket.close()
+            client_socket.send(response.encode('utf-8') if isinstance(response, str) else response)
+        except Exception as e:
+            print(f"Error forwarding request: {e}")
+            client_socket.send(b"HTTP/1.1 502 Bad Gateway\r\n\r\n")
+        finally:
+            client_socket.close()
 
 if __name__ == "__main__":
     start_load_balancer()
